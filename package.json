@@ -1,0 +1,41 @@
+{
+  "name": "chatporter",
+  "version": "1.0.0",
+  "description": "A utility to port markdown documents into AI chat conversations",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "chatporter": "./bin/chatporter.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "node --test"
+  },
+  "keywords": [
+    "chat",
+    "markdown",
+    "ai",
+    "context",
+    "document-upload"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^11.1.0",
+    "chalk": "^5.3.0",
+    "inquirer": "^9.2.15",
+    "open": "^10.1.0",
+    "v0-sdk": "^0.1.0",
+    "dotenv": "^16.3.1",
+    "archiver": "^7.0.1",
+    "glob": "^10.3.10"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+

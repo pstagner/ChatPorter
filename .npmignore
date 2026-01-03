@@ -1,0 +1,10 @@
+node_modules/
+*.log
+.DS_Store
+*.txt
+chatporter-output.txt
+.env
+.env.local
+EXAMPLE.md
+.git/
+
