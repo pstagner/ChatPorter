@@ -1,7 +1,7 @@
 {
   "name": "chatporter",
   "version": "1.0.0",
-  "description": "A utility to port markdown documents into AI chat conversations",
+  "description": "Import repositories and directories from your local machine into v0.dev chats",
   "type": "module",
   "main": "src/index.js",
   "bin": {
@@ -13,14 +13,27 @@
     "test": "node --test"
   },
   "keywords": [
+    "v0",
+    "v0.dev",
     "chat",
-    "markdown",
+    "repository",
+    "import",
+    "codebase",
     "ai",
-    "context",
-    "document-upload"
+    "cli",
+    "github",
+    "directory"
   ],
   "author": "",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pstagner/ChatPorter.git"
+  },
+  "homepage": "https://github.com/pstagner/ChatPorter#readme",
+  "bugs": {
+    "url": "https://github.com/pstagner/ChatPorter/issues"
+  },
   "dependencies": {
     "commander": "^11.1.0",
     "chalk": "^5.3.0",
