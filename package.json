@@ -1,5 +1,5 @@
 {
-  "name": "chatporter",
+  "name": "v0-repo-import",
   "version": "1.0.0",
   "description": "Import repositories and directories from your local machine into v0.dev chats",
   "type": "module",
