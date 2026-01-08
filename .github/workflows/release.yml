@@ -1,0 +1,205 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - custom
+        default: 'patch'
+      custom_version:
+        description: 'Custom version (e.g., 1.2.3) - only used if version_type is "custom"'
+        required: false
+        type: string
+      release_notes:
+        description: 'Release notes (leave empty to auto-generate from commits)'
+        required: false
+        type: text
+      publish_npm:
+        description: 'Publish to npm'
+        required: true
+        type: boolean
+        default: false
+      draft_release:
+        description: 'Create as draft release'
+        required: true
+        type: boolean
+        default: false
+      prerelease:
+        description: 'Mark as pre-release'
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Calculate version
+        id: version
+        run: |
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          
+          if [ "${{ inputs.version_type }}" == "custom" ]; then
+            NEW_VERSION="${{ inputs.custom_version }}"
+          else
+            IFS='.' read -r -a VERSION_PARTS <<< "$CURRENT_VERSION"
+            MAJOR=${VERSION_PARTS[0]}
+            MINOR=${VERSION_PARTS[1]}
+            PATCH=${VERSION_PARTS[2]}
+            
+            case "${{ inputs.version_type }}" in
+              major)
+                MAJOR=$((MAJOR + 1))
+                MINOR=0
+                PATCH=0
+                ;;
+              minor)
+                MINOR=$((MINOR + 1))
+                PATCH=0
+                ;;
+              patch)
+                PATCH=$((PATCH + 1))
+                ;;
+            esac
+            
+            NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          fi
+          
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=v$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "📦 New version: $NEW_VERSION"
+
+      - name: Update package.json version
+        run: |
+          npm version ${{ steps.version.outputs.new_version }} --no-git-tag-version
+          echo "✅ Updated package.json to version ${{ steps.version.outputs.new_version }}"
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          if [ -n "${{ inputs.release_notes }}" ]; then
+            # Use provided release notes
+            echo "${{ inputs.release_notes }}" > release_notes.md
+          else
+            # Auto-generate from commits since last tag
+            LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            if [ -z "$LAST_TAG" ]; then
+              # No previous tags, get all commits
+              COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges)
+            else
+              # Get commits since last tag
+              COMMITS=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+            fi
+            
+            VERSION="${{ steps.version.outputs.new_version }}"
+            REPO="${{ github.repository }}"
+            COMPARE_TAG="${LAST_TAG:-HEAD}"
+            
+            {
+              echo "# ChatPorter $VERSION 🚀"
+              echo ""
+              echo "## What's Changed"
+              echo ""
+              echo "$COMMITS"
+              echo ""
+              echo "## Installation"
+              echo ""
+              echo "\`\`\`bash"
+              echo "npm install -g chatporter@$VERSION"
+              echo "\`\`\`"
+              echo ""
+              echo "Or use it directly with \`npx\`:"
+              echo ""
+              echo "\`\`\`bash"
+              echo "npx chatporter@$VERSION"
+              echo "\`\`\`"
+              echo ""
+              echo "## Full Changelog"
+              echo ""
+              echo "View the [full changelog](https://github.com/$REPO/compare/$COMPARE_TAG...v$VERSION) for this release."
+              echo ""
+              echo "---"
+              echo ""
+              echo "**Full Changelog**: https://github.com/$REPO/compare/$COMPARE_TAG...v$VERSION"
+            } > release_notes.md
+          fi
+          
+          cat release_notes.md
+
+      - name: Create git tag
+        run: |
+          git tag -a ${{ steps.version.outputs.tag_name }} -m "Release ${{ steps.version.outputs.tag_name }}"
+          echo "✅ Created tag ${{ steps.version.outputs.tag_name }}"
+
+      - name: Commit version bump
+        run: |
+          git add package.json package-lock.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
+          echo "✅ Committed version bump"
+
+      - name: Push changes and tag
+        run: |
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          git push origin $BRANCH
+          git push origin ${{ steps.version.outputs.tag_name }}
+          echo "✅ Pushed changes and tag to GitHub"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.tag_name }}
+          name: ChatPorter ${{ steps.version.outputs.new_version }}
+          body_path: release_notes.md
+          draft: ${{ inputs.draft_release }}
+          prerelease: ${{ inputs.prerelease }}
+          generate_release_notes: false
+
+      - name: Publish to npm
+        if: inputs.publish_npm
+        run: |
+          npm publish --access public
+          echo "✅ Published to npm"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## 🎉 Release Created Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** ${{ steps.version.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Release:** https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ inputs.publish_npm }}" == "true" ]; then
+            echo "**npm:** https://www.npmjs.com/package/chatporter/v/${{ steps.version.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          fi
+
