@@ -1,6 +1,6 @@
 {
   "name": "chatporter",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Import repositories and directories from your local machine into v0.dev chats",
   "type": "module",
   "main": "src/index.js",
@@ -51,4 +51,3 @@
     "node": ">=18.0.0"
   }
 }
-
